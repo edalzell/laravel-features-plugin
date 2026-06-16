@@ -1,0 +1,31 @@
+{
+    "name": "edalzell/laravel-features-plugin-plugin",
+    "type": "composer-plugin",
+    "description": "Adds Laravel Features namespace composer hook",
+    "license": "MIT",
+    "require": {
+        "composer-plugin-api": "^2.0"
+    },
+    "require-dev": {
+        "composer/composer": "^2.0",
+        "pestphp/pest": "^4.7"
+    },
+    "extra": {
+        "class": "Edalzell\\LaravelFeatures\\Plugin"
+    },
+    "autoload": {
+        "psr-4": {
+            "Edalzell\\LaravelFeatures\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}
