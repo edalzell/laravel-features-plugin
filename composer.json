@@ -1,5 +1,5 @@
 {
-    "name": "edalzell/laravel-features-plugin-plugin",
+    "name": "edalzell/laravel-features-plugin",
     "type": "composer-plugin",
     "description": "Adds Laravel Features namespace composer hook",
     "license": "MIT",
