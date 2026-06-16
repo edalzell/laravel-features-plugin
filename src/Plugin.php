@@ -24,7 +24,7 @@ class Plugin implements EventSubscriberInterface, PluginInterface
 
     public function uninstall(Composer $composer, IOInterface $io) {}
 
-    protected function addComposerScript(): void
+    public function addComposerScript(): void
     {
         $hook = 'Edalzell\\Features\\Composer\\FeatureNamespaces::add';
         $path = Factory::getComposerFile();
