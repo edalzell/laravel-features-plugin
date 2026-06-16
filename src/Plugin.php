@@ -4,44 +4,151 @@ namespace Edalzell\LaravelFeatures;
 
 use Composer\Composer;
 use Composer\EventDispatcher\EventSubscriberInterface;
-use Composer\Factory;
 use Composer\IO\IOInterface;
-use Composer\Json\JsonManipulator;
+use Composer\Package\RootPackageInterface;
 use Composer\Plugin\PluginInterface;
+use Composer\Script\Event;
+use Composer\Script\ScriptEvents;
+use Exception;
 
 class Plugin implements EventSubscriberInterface, PluginInterface
 {
-    public static function getSubscribedEvents()
+    /** @var array<string, array<string>|string> */
+    private array $autoload = [];
+
+    /** @var array<string, array<string>|string> */
+    private array $autoloadDev = [];
+
+    private RootPackageInterface $package;
+
+    public function activate(Composer $composer, IOInterface $io): void
     {
-        return [
-            'pre-update-cmd' => 'addComposerScript',
-        ];
+        $this->package = $composer->getPackage();
+        $this->autoload = $this->package->getAutoload();
+        $this->autoloadDev = $this->package->getDevAutoload();
     }
 
-    public function activate(Composer $composer, IOInterface $io) {}
+    public function deactivate(Composer $composer, IOInterface $io): void {}
 
-    public function deactivate(Composer $composer, IOInterface $io) {}
+    public function uninstall(Composer $composer, IOInterface $io): void {}
 
-    public function uninstall(Composer $composer, IOInterface $io) {}
-
-    public function addComposerScript(): void
+    /** @return array<string, string> */
+    public static function getSubscribedEvents(): array
     {
-        $hook = 'Edalzell\\Features\\Composer\\FeatureNamespaces::add';
-        $path = Factory::getComposerFile();
-        $contents = file_get_contents($path);
-        $json = json_decode($contents, true);
+        return [ScriptEvents::PRE_AUTOLOAD_DUMP => 'onPreAutoloadDump'];
+    }
 
-        $hooks = (array) ($json['scripts']['pre-autoload-dump'] ?? []);
+    public function onPreAutoloadDump(Event $_event): void
+    {
+        $this->setAutoloads();
+    }
 
-        if (in_array($hook, $hooks)) {
-            return;
+    public function setAutoloads(): void
+    {
+        $this
+            ->autoloadFeatures()
+            ->autoloadPackageFeatures();
+
+        $this->package->setAutoload($this->autoload);
+        $this->package->setDevAutoload($this->autoloadDev);
+    }
+
+    private function autoloadFeatures(): self
+    {
+        if (empty($featurePaths = $this->featurePaths('features'))) {
+            return $this;
         }
 
-        $hooks[] = $hook;
+        $this->generateNamespaces($this->featuresNamespace(), $featurePaths);
 
-        $manipulator = new JsonManipulator($contents);
-        $manipulator->addSubNode('scripts', 'pre-autoload-dump', $hooks);
+        return $this;
+    }
 
-        file_put_contents($path, $manipulator->getContents());
+    private function autoloadPackageFeatures(): self
+    {
+        if (empty($featurePaths = $this->featurePaths('vendor/*/*/features'))) {
+            return $this;
+        }
+
+        $this->generateNamespaces(
+            $this->featuresNamespace($featurePaths),
+            $featurePaths
+        );
+
+        return $this;
+    }
+
+    /** @return array<int, string> */
+    private function featurePaths(string $path): array
+    {
+        if (empty($paths = glob(getcwd().'/'.$path.'/*'))) {
+            return [];
+        }
+
+        return array_filter($paths, 'is_dir');
+    }
+
+    /** @param array<int, string> $featurePaths */
+    private function generateNamespaces(string $namespace, array $featurePaths): void
+    {
+        $cwd = str_replace('\\', '/', getcwd());
+
+        foreach ($featurePaths as $path) {
+            $normalizedPath = str_replace('\\', '/', $path);
+            $featureName = basename($normalizedPath);
+            $featurePath = ltrim(str_replace($cwd, '', $normalizedPath), '/');
+
+            $rootNamespace = "{$namespace}\\{$featureName}\\";
+            $dbRootNamespace = $rootNamespace.'Database\\';
+            $rootPath = "{$featurePath}/src";
+
+            $this->autoload['psr-4'][$rootNamespace] = $rootPath;
+
+            $factoryPath = "{$featurePath}/database/factories";
+            $seedersPath = "{$featurePath}/database/seeders";
+
+            $this->autoload['psr-4'][$dbRootNamespace.'Factories\\'] = $factoryPath;
+            $this->autoload['psr-4'][$dbRootNamespace.'Seeders\\'] = $seedersPath;
+
+            $this->autoloadDev['psr-4'][$rootNamespace.'Tests\\'] = "{$featurePath}/tests";
+        }
+
+    }
+
+    /** @param array<int, string> $featurePaths */
+    private function featuresNamespace(array $featurePaths = []): string
+    {
+        if (empty($featurePaths)) {
+            // When the root package has its own PSR-4 namespace (i.e. it's a package,
+            // not a Laravel app), prefix Features with that namespace so local feature
+            // classes resolve correctly during package development.
+            $rootPsr4 = array_key_first($this->autoload['psr-4'] ?? []);
+
+            if ($rootPsr4 && $rootPsr4 !== 'App\\') {
+                return rtrim($rootPsr4, '\\').'\\Features';
+            }
+
+            return 'Features';
+        }
+
+        $composerPath = $this->getComposerPath($featurePaths[0]);
+        $contents = file_get_contents($composerPath);
+
+        if ($contents === false) {
+            throw new Exception("Cannot read composer.json at {$composerPath}");
+        }
+
+        $composer = json_decode($contents, true);
+
+        if (! is_array($composer) || ! isset($composer['autoload']['psr-4'])) {
+            throw new Exception("composer.json at {$composerPath} is missing autoload.psr-4");
+        }
+
+        return array_key_first($composer['autoload']['psr-4']).'Features';
+    }
+
+    private function getComposerPath(string $featurePath): string
+    {
+        return dirname($featurePath, 2).'/composer.json';
     }
 }
