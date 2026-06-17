@@ -35,15 +35,10 @@ class Plugin implements EventSubscriberInterface, PluginInterface
     /** @return array<string, string> */
     public static function getSubscribedEvents(): array
     {
-        return [ScriptEvents::PRE_AUTOLOAD_DUMP => 'onPreAutoloadDump'];
+        return [ScriptEvents::PRE_AUTOLOAD_DUMP => 'setAutoloads'];
     }
 
-    public function onPreAutoloadDump(Event $_event): void
-    {
-        $this->setAutoloads();
-    }
-
-    public function setAutoloads(): void
+    public function setAutoloads(Event $_unused): void
     {
         $this
             ->autoloadFeatures()
