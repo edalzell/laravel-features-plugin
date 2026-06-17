@@ -5,6 +5,7 @@ composer.lock
 # Caches
 .phpunit.cache
 .phpunit.result.cache
+/build
 
 # IDE Helper
 _ide_helper.php
