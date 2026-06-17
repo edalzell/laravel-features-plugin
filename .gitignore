@@ -1,2 +1,17 @@
+# Composer Related
+composer.lock
 /vendor
-/composer.lock
+
+# Caches
+.phpunit.cache
+.phpunit.result.cache
+
+# IDE Helper
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+
+# Editors
+/.idea
+/.fleet
+/.vscode
