@@ -1,5 +1,9 @@
 <?php
 
+use Composer\Composer;
+use Composer\IO\NullIO;
+use Composer\Package\RootPackage;
+use Edalzell\LaravelFeatures\Plugin;
 use Tests\TestCase;
 
 /*
@@ -17,21 +21,6 @@ pest()->extend(TestCase::class);
 
 /*
 |--------------------------------------------------------------------------
-| Expectations
-|--------------------------------------------------------------------------
-|
-| When you're writing tests, you often need to check that values meet certain conditions. The
-| "expect()" function gives you access to a set of "expectations" methods that you can use
-| to assert different things. Of course, you may extend the Expectation API at any time.
-|
-*/
-
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
-
-/*
-|--------------------------------------------------------------------------
 | Functions
 |--------------------------------------------------------------------------
 |
@@ -40,8 +29,26 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
-
-function something()
+function makePlugin(RootPackage $package): Plugin
 {
-    // ..
+    $composer = new Composer;
+    $composer->setPackage($package);
+
+    $plugin = new Plugin;
+    $plugin->activate($composer, new NullIO);
+
+    return $plugin;
+}
+
+function rmRecursive(string $dir): void
+{
+    if (! is_dir($dir)) {
+        return;
+    }
+
+    foreach (glob($dir.'/*') ?: [] as $file) {
+        is_dir($file) ? rmRecursive($file) : unlink($file);
+    }
+
+    rmdir($dir);
 }

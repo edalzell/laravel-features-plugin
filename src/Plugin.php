@@ -7,7 +7,6 @@ use Composer\EventDispatcher\EventSubscriberInterface;
 use Composer\IO\IOInterface;
 use Composer\Package\RootPackageInterface;
 use Composer\Plugin\PluginInterface;
-use Composer\Script\Event;
 use Composer\Script\ScriptEvents;
 use Exception;
 
@@ -38,7 +37,7 @@ class Plugin implements EventSubscriberInterface, PluginInterface
         return [ScriptEvents::PRE_AUTOLOAD_DUMP => 'setAutoloads'];
     }
 
-    public function setAutoloads(Event $_unused): void
+    public function setAutoloads(): void
     {
         $this
             ->autoloadFeatures()
@@ -127,11 +126,11 @@ class Plugin implements EventSubscriberInterface, PluginInterface
         }
 
         $composerPath = $this->getComposerPath($featurePaths[0]);
-        $contents = file_get_contents($composerPath);
-
-        if ($contents === false) {
+        if (! is_readable($composerPath)) {
             throw new Exception("Cannot read composer.json at {$composerPath}");
         }
+
+        $contents = file_get_contents($composerPath);
 
         $composer = json_decode($contents, true);
 

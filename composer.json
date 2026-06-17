@@ -10,7 +10,6 @@
         "composer/composer": "^2.0",
         "laravel/pint": "^1.14",
         "pestphp/pest": "^4.7",
-        "pestphp/pest-plugin-arch": "^4.0",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "spatie/ray": "^1.40"
