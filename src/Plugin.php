@@ -49,11 +49,38 @@ class Plugin implements EventSubscriberInterface, PluginInterface
 
     private function autoloadFeatures(): self
     {
-        if (empty($featurePaths = $this->featurePaths('features'))) {
-            return $this;
+        if ($featurePaths = $this->featurePaths('features')) {
+            $this->generateNamespaces($this->featuresNamespace(), $featurePaths);
         }
 
-        $this->generateNamespaces($this->featuresNamespace(), $featurePaths);
+        return $this->autoloadConfiguredFeatures();
+    }
+
+    /**
+     * Autoload features from any additional directories declared in the root
+     * package's `extra.laravel-features.paths`, keyed by path => namespace.
+     */
+    private function autoloadConfiguredFeatures(): self
+    {
+        $paths = $this->package->getExtra()['laravel-features']['paths'] ?? [];
+
+        if (! is_array($paths)) {
+            throw new Exception('extra.laravel-features.paths must be an object of path => namespace.');
+        }
+
+        foreach ($paths as $path => $namespace) {
+            if (! is_string($path) || ! is_string($namespace)) {
+                throw new Exception(
+                    'extra.laravel-features.paths must map a path to a namespace, e.g. {"../../shared/features": "Shared\\\\Features"}.'
+                );
+            }
+
+            if (empty($featurePaths = $this->featurePaths($path))) {
+                continue;
+            }
+
+            $this->generateNamespaces(rtrim($namespace, '\\'), $featurePaths);
+        }
 
         return $this;
     }
