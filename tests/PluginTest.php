@@ -111,3 +111,63 @@ it('throws when vendor composer.json is missing autoload psr-4', function () {
 
     $this->plugin->setAutoloads();
 })->throws(Exception::class);
+
+it('generates psr-4 entries for a configured path outside the app', function () {
+    mkdir('apps/server', 0755, true);
+    mkdir('shared/features/MyFeature', 0755, true);
+    chdir('apps/server');
+
+    $this->package->setExtra([
+        'laravel-features' => ['paths' => ['../../shared/features' => 'Shared\Features']],
+    ]);
+
+    $this->plugin->setAutoloads();
+
+    expect($this->package->getAutoload()['psr-4'])
+        ->toHaveKey('Shared\Features\MyFeature\\', '../../shared/features/MyFeature/src')
+        ->toHaveKey('Shared\Features\MyFeature\Database\Factories\\', '../../shared/features/MyFeature/database/factories')
+        ->toHaveKey('Shared\Features\MyFeature\Database\Seeders\\', '../../shared/features/MyFeature/database/seeders');
+
+    expect($this->package->getDevAutoload()['psr-4'])
+        ->toHaveKey('Shared\Features\MyFeature\Tests\\', '../../shared/features/MyFeature/tests');
+});
+
+it('generates psr-4 entries for multiple configured paths', function () {
+    mkdir('features/Local', 0755, true);
+    mkdir('shared/features/Alpha', 0755, true);
+    mkdir('other/features/Beta', 0755, true);
+
+    $this->package->setExtra([
+        'laravel-features' => ['paths' => [
+            'shared/features' => 'Shared\Features',
+            'other/features' => 'Other\Features',
+        ]],
+    ]);
+
+    $this->plugin->setAutoloads();
+
+    expect($this->package->getAutoload()['psr-4'])
+        ->toHaveKey('Features\Local\\')
+        ->toHaveKey('Shared\Features\Alpha\\')
+        ->toHaveKey('Other\Features\Beta\\');
+});
+
+it('ignores a configured path that has no features', function () {
+    $this->package->setExtra([
+        'laravel-features' => ['paths' => ['shared/features' => 'Shared\Features']],
+    ]);
+
+    $this->plugin->setAutoloads();
+
+    expect($this->package->getAutoload())->toBe(['psr-4' => []]);
+});
+
+it('throws when a configured path has no namespace', function () {
+    mkdir('shared/features/MyFeature', 0755, true);
+
+    $this->package->setExtra([
+        'laravel-features' => ['paths' => ['shared/features']],
+    ]);
+
+    $this->plugin->setAutoloads();
+})->throws(Exception::class, 'must map a path to a namespace');
